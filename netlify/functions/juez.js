@@ -1,5 +1,29 @@
-// Función serverless: recibe la pregunta y responde SI / NO / NOSE usando Gemini (plan gratuito).
+// Función serverless: responde SI / NO / NOSE usando Gemini (plan gratuito).
+// Si abrís la URL de la función en el navegador (GET) te muestra un diagnóstico.
+const URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent';
+
+async function gemini(prompt) {
+  return fetch(URL, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY || '' },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { maxOutputTokens: 10, temperature: 0 }
+    })
+  });
+}
+
 exports.handler = async (event) => {
+  if (event.httpMethod === 'GET') {
+    if (!process.env.GEMINI_API_KEY) return { statusCode: 200, body: 'DIAGNOSTICO: falta la variable GEMINI_API_KEY (o no se hizo un deploy nuevo después de crearla).' };
+    try {
+      const r = await gemini('Respondé solo: OK');
+      const t = await r.text();
+      return { statusCode: 200, body: 'DIAGNOSTICO: Google respondió con código ' + r.status + '\n\n' + t.slice(0, 600) };
+    } catch (e) {
+      return { statusCode: 200, body: 'DIAGNOSTICO: error de conexión: ' + e.message };
+    }
+  }
   if (event.httpMethod !== 'POST') return { statusCode: 405, body: 'Method not allowed' };
   try {
     const { name, d, past, q } = JSON.parse(event.body || '{}');
@@ -13,20 +37,7 @@ exports.handler = async (event) => {
       'Respondé con UNA sola palabra: SI, NO o NOSE. Usá NOSE si con los datos no se puede saber o si no es una pregunta de sí/no. ' +
       'Si pregunta directamente el nombre, respondé NO.';
 
-    const res = await fetch(
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent',
-      {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json',
-          'x-goog-api-key': process.env.GEMINI_API_KEY
-        },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { maxOutputTokens: 10, temperature: 0 }
-        })
-      }
-    );
+    const res = await gemini(prompt);
     if (!res.ok) return { statusCode: 502, body: 'Error de la API' };
     const data = await res.json();
     const r = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'NOSE';
