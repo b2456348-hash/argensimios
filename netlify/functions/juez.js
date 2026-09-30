@@ -1,6 +1,6 @@
 // Función serverless: responde SI / NO / NOSE usando Gemini (plan gratuito).
 // Si abrís la URL de la función en el navegador (GET) te muestra un diagnóstico.
-const URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent';
+const URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent';
 
 async function gemini(prompt) {
   return fetch(URL, {
